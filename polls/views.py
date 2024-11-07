@@ -6,6 +6,7 @@ from django.db.models import F
 from django.urls import reverse
 from django.http import Http404
 from django.views import generic
+from django.utils import timezone
 
 
 class IndexView(generic.ListView):
@@ -13,15 +14,17 @@ class IndexView(generic.ListView):
     context_object_name = "latest_question_list"
 
     def get_queryset(self):
-        """Return the last five published questions."""
-        return Question.objects.order_by("pub_date")[:5]
+        """
+        Return the last five published questions (not including those set to be
+        published in the future).
+        """
+        return Question.objects.filter(pub_date__lte=timezone.now()).order_by("pub_date")[:5]
 
     def get_context_data(self, **kwargs):
         # First, get the default context from ListView (which includes `latest_question_list`)
         context = super().get_context_data(**kwargs)
 
         # Add `all_choices` to the context
-        context["latest_question_list"] = Question.objects.all()
         context["all_choices"] = Choice.objects.all()
 
         return context
@@ -30,6 +33,12 @@ class IndexView(generic.ListView):
 class DetailView(generic.DetailView):
     model = Question
     template_name = "polls/detail.html"
+
+    def get_queryset(self):
+        """
+        Excludes any questions that aren't published yet.
+        """
+        return Question.objects.filter(pub_date__lte=timezone.now())
 
 
 class ResultsView(generic.DetailView):
